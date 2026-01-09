@@ -63,9 +63,8 @@ VIAddVersionKey "LegalCopyright" "Copyright (c) ${PRODUCT_PUBLISHER}"
 ; Instfiles page
 !insertmacro MUI_PAGE_INSTFILES
 
-; Finish page
-!define MUI_FINISHPAGE_RUN "wscript.exe"
-!define MUI_FINISHPAGE_RUN_PARAMETERS '"$INSTDIR\ClaudeCodeLauncher.vbs"'
+; Finish page - use a batch wrapper to avoid parameter issues
+!define MUI_FINISHPAGE_RUN "$INSTDIR\LaunchClaude.bat"
 !define MUI_FINISHPAGE_RUN_TEXT "Launch Claude Code"
 !define MUI_FINISHPAGE_SHOWREADME "$INSTDIR\README.txt"
 !define MUI_FINISHPAGE_SHOWREADME_TEXT "View README"
@@ -116,6 +115,7 @@ Section "Claude Code Core" SecCore
     ; Copy main launcher (VBS for hidden window)
     SetOutPath "$INSTDIR"
     File "..\resources\ClaudeCodeLauncher.vbs"
+    File "..\resources\LaunchClaude.bat"
     File "..\resources\README.txt"
 
     ; Create uninstaller
@@ -211,6 +211,7 @@ Section "Uninstall"
     RMDir /r "$INSTDIR\git"
     RMDir /r "$INSTDIR\launcher"
     Delete "$INSTDIR\ClaudeCodeLauncher.vbs"
+    Delete "$INSTDIR\LaunchClaude.bat"
     Delete "$INSTDIR\README.txt"
     Delete "$INSTDIR\Uninstall.exe"
     RMDir "$INSTDIR"
