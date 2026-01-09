@@ -56,7 +56,8 @@ VIAddVersionKey "LegalCopyright" "Copyright (c) ${PRODUCT_PUBLISHER}"
 !insertmacro MUI_PAGE_INSTFILES
 
 ; Finish page
-!define MUI_FINISHPAGE_RUN "$INSTDIR\ClaudeCodeLauncher.bat"
+!define MUI_FINISHPAGE_RUN "wscript.exe"
+!define MUI_FINISHPAGE_RUN_PARAMETERS '"$INSTDIR\ClaudeCodeLauncher.vbs"'
 !define MUI_FINISHPAGE_RUN_TEXT "Launch Claude Code"
 !define MUI_FINISHPAGE_SHOWREADME "$INSTDIR\README.txt"
 !define MUI_FINISHPAGE_SHOWREADME_TEXT "View README"
@@ -104,9 +105,9 @@ Section "Claude Code Core" SecCore
     File "..\..\launcher\ClaudeCodeLauncher.ps1"
     File "..\resources\claude.ico"
 
-    ; Copy main launcher batch
+    ; Copy main launcher (VBS for hidden window)
     SetOutPath "$INSTDIR"
-    File "..\resources\ClaudeCodeLauncher.bat"
+    File "..\resources\ClaudeCodeLauncher.vbs"
     File "..\resources\README.txt"
 
     ; Create uninstaller
@@ -142,13 +143,13 @@ Section "Claude Code Core" SecCore
 SectionEnd
 
 Section "Desktop Shortcut" SecDesktop
-    CreateShortCut "$DESKTOP\Claude Code.lnk" "$INSTDIR\ClaudeCodeLauncher.bat" "" \
+    CreateShortCut "$DESKTOP\Claude Code.lnk" "wscript.exe" '"$INSTDIR\ClaudeCodeLauncher.vbs"' \
                    "$INSTDIR\launcher\claude.ico" 0
 SectionEnd
 
 Section "Start Menu Shortcuts" SecStartMenu
     CreateDirectory "$SMPROGRAMS\Claude Code"
-    CreateShortCut "$SMPROGRAMS\Claude Code\Claude Code.lnk" "$INSTDIR\ClaudeCodeLauncher.bat" "" \
+    CreateShortCut "$SMPROGRAMS\Claude Code\Claude Code.lnk" "wscript.exe" '"$INSTDIR\ClaudeCodeLauncher.vbs"' \
                    "$INSTDIR\launcher\claude.ico" 0
     CreateShortCut "$SMPROGRAMS\Claude Code\Uninstall.lnk" "$INSTDIR\Uninstall.exe"
 SectionEnd
@@ -201,7 +202,7 @@ Section "Uninstall"
     RMDir /r "$INSTDIR\nodejs"
     RMDir /r "$INSTDIR\git"
     RMDir /r "$INSTDIR\launcher"
-    Delete "$INSTDIR\ClaudeCodeLauncher.bat"
+    Delete "$INSTDIR\ClaudeCodeLauncher.vbs"
     Delete "$INSTDIR\README.txt"
     Delete "$INSTDIR\Uninstall.exe"
     RMDir "$INSTDIR"
