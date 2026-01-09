@@ -76,23 +76,6 @@ jobs:
           choco install nsis -y
         shell: pwsh
 
-      - name: Install NSIS plugins
-        run: |
-          # Download EnVar plugin for PATH manipulation
-          Invoke-WebRequest -Uri "https://nsis.sourceforge.io/mediawiki/images/7/7f/EnVar_plugin.zip" -OutFile "EnVar.zip" -UseBasicParsing
-          Expand-Archive -Path "EnVar.zip" -DestinationPath "EnVar" -Force
-
-          # Get NSIS install path
-          $nsisPath = "C:\Program Files (x86)\NSIS"
-
-          # Copy plugin files
-          Copy-Item -Path "EnVar\Plugins\x86-ansi\*.dll" -Destination "$nsisPath\Plugins\x86-ansi\" -Force
-          Copy-Item -Path "EnVar\Plugins\x86-unicode\*.dll" -Destination "$nsisPath\Plugins\x86-unicode\" -Force
-
-          Remove-Item -Path "EnVar.zip" -Force
-          Remove-Item -Path "EnVar" -Recurse -Force
-        shell: pwsh
-
       - name: Create resource files
         run: |
           # Create LICENSE.txt
@@ -140,17 +123,11 @@ jobs:
           "@ | Out-File -FilePath "windows/installer/resources/README.txt" -Encoding UTF8
         shell: pwsh
 
-      - name: Create placeholder icons (will be replaced with actual icons)
+      - name: Create placeholder icons
         run: |
-          # Create a simple ICO file placeholder
-          # In production, you should use actual icon files
-
-          # Download a placeholder icon or create one
-          # For now, we'll create an empty placeholder
-          # You should replace this with actual claude.ico
+          Add-Type -AssemblyName System.Drawing
 
           # Create header.bmp (150x57 pixels for NSIS header)
-          Add-Type -AssemblyName System.Drawing
           $headerBmp = New-Object System.Drawing.Bitmap(150, 57)
           $graphics = [System.Drawing.Graphics]::FromImage($headerBmp)
           $graphics.Clear([System.Drawing.Color]::FromArgb(45, 45, 45))
@@ -167,34 +144,38 @@ jobs:
           $graphics.Clear([System.Drawing.Color]::FromArgb(30, 30, 30))
           $font = New-Object System.Drawing.Font("Segoe UI", 14, [System.Drawing.FontStyle]::Bold)
           $brush = New-Object System.Drawing.SolidBrush([System.Drawing.Color]::FromArgb(255, 149, 0))
-
-          # Draw rotated text
           $graphics.TranslateTransform(82, 157)
           $graphics.RotateTransform(-90)
           $graphics.DrawString("Claude Code", $font, $brush, -50, -10)
-
           $welcomeBmp.Save("windows/installer/resources/welcome.bmp", [System.Drawing.Imaging.ImageFormat]::Bmp)
           $graphics.Dispose()
           $welcomeBmp.Dispose()
 
-          # Create a simple ICO file
-          $iconBmp = New-Object System.Drawing.Bitmap(256, 256)
+          # Create ICO file using proper Icon format
+          # Create a 32x32 bitmap first
+          $iconBmp = New-Object System.Drawing.Bitmap(32, 32)
           $graphics = [System.Drawing.Graphics]::FromImage($iconBmp)
           $graphics.SmoothingMode = [System.Drawing.Drawing2D.SmoothingMode]::AntiAlias
-          $graphics.Clear([System.Drawing.Color]::Transparent)
-
-          # Draw orange circle background
-          $brush = New-Object System.Drawing.SolidBrush([System.Drawing.Color]::FromArgb(255, 149, 0))
-          $graphics.FillEllipse($brush, 10, 10, 236, 236)
-
-          # Draw "C" letter
-          $font = New-Object System.Drawing.Font("Segoe UI", 140, [System.Drawing.FontStyle]::Bold)
+          $graphics.Clear([System.Drawing.Color]::FromArgb(255, 149, 0))
+          $font = New-Object System.Drawing.Font("Segoe UI", 18, [System.Drawing.FontStyle]::Bold)
           $whiteBrush = New-Object System.Drawing.SolidBrush([System.Drawing.Color]::White)
-          $graphics.DrawString("C", $font, $whiteBrush, 35, 20)
-
-          $iconBmp.Save("windows/installer/resources/claude.ico", [System.Drawing.Imaging.ImageFormat]::Icon)
+          $graphics.DrawString("C", $font, $whiteBrush, 4, 2)
           $graphics.Dispose()
+
+          # Convert to icon using stream
+          $iconPath = "windows/installer/resources/claude.ico"
+          $ms = New-Object System.IO.MemoryStream
+          $iconBmp.Save($ms, [System.Drawing.Imaging.ImageFormat]::Png)
           $iconBmp.Dispose()
+          $ms.Seek(0, [System.IO.SeekOrigin]::Begin) | Out-Null
+          $img = [System.Drawing.Image]::FromStream($ms)
+          $icon = [System.Drawing.Icon]::FromHandle($img.GetHicon())
+          $fs = [System.IO.File]::Create($iconPath)
+          $icon.Save($fs)
+          $fs.Close()
+          $icon.Dispose()
+          $img.Dispose()
+          $ms.Dispose()
         shell: pwsh
 
       - name: Create launcher batch file

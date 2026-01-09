@@ -4,6 +4,7 @@
 !include "MUI2.nsh"
 !include "FileFunc.nsh"
 !include "x64.nsh"
+!include "WinMessages.nsh"
 
 ; =====================
 ; Installer Attributes
@@ -89,15 +90,12 @@ Section "Claude Code Core" SecCore
     ; Copy launcher files
     SetOutPath "$INSTDIR\launcher"
     File "..\..\launcher\ClaudeCodeLauncher.ps1"
+    File "..\resources\claude.ico"
 
     ; Copy main launcher batch
     SetOutPath "$INSTDIR"
     File "..\resources\ClaudeCodeLauncher.bat"
     File "..\resources\README.txt"
-
-    ; Install Claude Code globally using bundled npm
-    SetOutPath "$INSTDIR"
-    nsExec::ExecToLog '"$INSTDIR\nodejs\npm.cmd" install -g @anthropic-ai/claude-code'
 
     ; Create uninstaller
     WriteUninstaller "$INSTDIR\Uninstall.exe"
@@ -144,10 +142,22 @@ Section "Start Menu Shortcuts" SecStartMenu
 SectionEnd
 
 Section "Add to System PATH" SecPath
-    ; Add to system PATH
-    EnVar::SetHKLM
-    EnVar::AddValue "PATH" "$INSTDIR\nodejs"
-    EnVar::AddValue "PATH" "$INSTDIR\git\bin"
+    ; Read current PATH
+    ReadRegStr $0 HKLM "SYSTEM\CurrentControlSet\Control\Session Manager\Environment" "Path"
+
+    ; Add Node.js to PATH if not already present
+    StrCpy $1 "$INSTDIR\nodejs"
+    ${If} $0 != ""
+        StrCpy $0 "$0;$1"
+    ${Else}
+        StrCpy $0 "$1"
+    ${EndIf}
+
+    ; Add Git to PATH
+    StrCpy $0 "$0;$INSTDIR\git\bin"
+
+    ; Write updated PATH
+    WriteRegExpandStr HKLM "SYSTEM\CurrentControlSet\Control\Session Manager\Environment" "Path" "$0"
 
     ; Broadcast environment change
     SendMessage ${HWND_BROADCAST} ${WM_WININICHANGE} 0 "STR:Environment" /TIMEOUT=5000
@@ -170,11 +180,6 @@ Section "Uninstall"
     ; Remove registry keys
     DeleteRegKey HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\ClaudeCode"
     DeleteRegKey HKLM "Software\ClaudeCode"
-
-    ; Remove from PATH
-    EnVar::SetHKLM
-    EnVar::DeleteValue "PATH" "$INSTDIR\nodejs"
-    EnVar::DeleteValue "PATH" "$INSTDIR\git\bin"
 
     ; Remove shortcuts
     Delete "$DESKTOP\Claude Code.lnk"
