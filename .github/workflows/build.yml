@@ -218,10 +218,13 @@ jobs:
           & "C:\Program Files (x86)\NSIS\makensis.exe" /V4 /DPRODUCT_VERSION="$version" installer.nsi
 
           # Rename output file to include version
-          if (Test-Path "..\..\..\dist\ClaudeCodeSetup.exe") {
-            Rename-Item "..\..\..\dist\ClaudeCodeSetup.exe" "ClaudeCodeSetup-$version.exe"
-            Move-Item "ClaudeCodeSetup-$version.exe" "..\..\..\dist\"
+          $distPath = "..\..\..\dist"
+          if (Test-Path "$distPath\ClaudeCodeSetup.exe") {
+            Rename-Item "$distPath\ClaudeCodeSetup.exe" "ClaudeCodeSetup-$version.exe"
           }
+
+          Write-Host "Built installer:"
+          Get-ChildItem "$distPath" | ForEach-Object { Write-Host $_.Name }
         shell: pwsh
 
       - name: Upload installer artifact
