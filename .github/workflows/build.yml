@@ -69,6 +69,33 @@ jobs:
           Copy-Item -Path $npmRoot -Destination "deps/nodejs/node_modules" -Recurse -Force
         shell: pwsh
 
+      - name: Compress dependencies for faster installation
+        run: |
+          Write-Host "Compressing Node.js..."
+          7z a -t7z -mx=5 -mmt=on "deps/nodejs.7z" "./deps/nodejs/*" | Out-Null
+
+          Write-Host "Compressing Git..."
+          7z a -t7z -mx=5 -mmt=on "deps/git.7z" "./deps/git/*" | Out-Null
+
+          # Remove original folders to reduce installer size
+          Remove-Item -Path "deps/nodejs" -Recurse -Force
+          Remove-Item -Path "deps/git" -Recurse -Force
+
+          Write-Host "Compression complete"
+          Get-ChildItem deps/*.7z | ForEach-Object { Write-Host "$($_.Name): $([math]::Round($_.Length/1MB, 2)) MB" }
+        shell: pwsh
+
+      - name: Download 7za.exe for installer
+        run: |
+          # Download 7-Zip standalone executable
+          $url = "https://www.7-zip.org/a/7za920.zip"
+          Invoke-WebRequest -Uri $url -OutFile "7za.zip" -UseBasicParsing
+          Expand-Archive -Path "7za.zip" -DestinationPath "7za_temp" -Force
+          Copy-Item -Path "7za_temp/7za.exe" -Destination "windows/installer/resources/7za.exe"
+          Remove-Item -Path "7za.zip" -Force
+          Remove-Item -Path "7za_temp" -Recurse -Force
+        shell: pwsh
+
       - name: Install NSIS
         run: |
           choco install nsis -y

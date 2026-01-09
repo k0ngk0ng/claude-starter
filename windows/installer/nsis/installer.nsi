@@ -79,13 +79,25 @@ Section "Claude Code Core" SecCore
 
     SetOutPath "$INSTDIR"
 
-    ; Copy Node.js
-    SetOutPath "$INSTDIR\nodejs"
-    File /r "..\..\..\deps\nodejs\*.*"
+    ; Copy 7za.exe first for extraction
+    File "..\resources\7za.exe"
 
-    ; Copy Git
-    SetOutPath "$INSTDIR\git"
-    File /r "..\..\..\deps\git\*.*"
+    ; Copy 7z archives
+    File "..\..\..\deps\nodejs.7z"
+    File "..\..\..\deps\git.7z"
+
+    ; Extract Node.js using 7z
+    DetailPrint "Extracting Node.js..."
+    nsExec::ExecToLog '"$INSTDIR\7za.exe" x -o"$INSTDIR\nodejs" -y "$INSTDIR\nodejs.7z"'
+    Delete "$INSTDIR\nodejs.7z"
+
+    ; Extract Git using 7z
+    DetailPrint "Extracting Git..."
+    nsExec::ExecToLog '"$INSTDIR\7za.exe" x -o"$INSTDIR\git" -y "$INSTDIR\git.7z"'
+    Delete "$INSTDIR\git.7z"
+
+    ; Delete 7za.exe after extraction
+    Delete "$INSTDIR\7za.exe"
 
     ; Copy launcher files
     SetOutPath "$INSTDIR\launcher"
