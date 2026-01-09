@@ -66,6 +66,9 @@ jobs:
           # Set npm prefix to local nodejs folder so everything is self-contained
           $env:npm_config_prefix = "$PWD\deps\nodejs"
 
+          # Use npm mirror for faster download
+          npm config set registry https://registry.npmmirror.com
+
           npm install -g @anthropic-ai/claude-code
 
           # Verify installation
