@@ -26,6 +26,9 @@ env:
   NODE_VERSION: ${{ github.event.inputs.node_version || '20.18.1' }}
   GIT_VERSION: ${{ github.event.inputs.git_version || '2.47.1' }}
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: windows-latest
