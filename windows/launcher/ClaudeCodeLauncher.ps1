@@ -285,7 +285,7 @@ $buttonPanel.Controls.Add($btnLaunch)
 
 # Import button
 $btnImport = New-Object System.Windows.Forms.Button
-$btnImport.Text = "Import JSON"
+$btnImport.Text = "Import"
 $btnImport.Font = New-Object System.Drawing.Font("Segoe UI", 10)
 $btnImport.Location = New-Object System.Drawing.Point(210, 10)
 $btnImport.Size = New-Object System.Drawing.Size(100, 45)
@@ -400,10 +400,11 @@ $btnLaunch.Add_Click({
     $values = Get-FormValues
     Save-Config $values
 
-    # Get installation directory
-    $installDir = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
+    # Get installation directory (launcher is in $INSTDIR\launcher)
+    $installDir = Split-Path -Parent $PSScriptRoot
     if (-not (Test-Path "$installDir\nodejs")) {
-        $installDir = $PSScriptRoot
+        # Fallback: maybe running from source
+        $installDir = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
     }
 
     # Build environment variables
@@ -473,12 +474,20 @@ echo ========================================
 echo   Claude Code Launcher
 echo ========================================
 echo.
-echo Starting Claude Code...
+echo Install Directory: $installDir
 echo Working Directory: $workDir
 echo.
 
-REM Use bundled claude command directly
-"$installDir\nodejs\claude.cmd"$claudeArgs
+REM Check if claude.cmd exists
+if exist "$installDir\nodejs\claude.cmd" (
+    echo Starting Claude Code...
+    "$installDir\nodejs\claude.cmd"$claudeArgs
+) else (
+    echo ERROR: claude.cmd not found at $installDir\nodejs\claude.cmd
+    echo.
+    echo Trying npx fallback...
+    npx @anthropic-ai/claude-code$claudeArgs
+)
 
 pause
 "@
