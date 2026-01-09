@@ -8,6 +8,10 @@ Add-Type -AssemblyName System.Drawing
 $configPath = "$env:APPDATA\ClaudeCode\config.json"
 $configDir = Split-Path $configPath -Parent
 
+# Get script directory for icon
+$scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
+$iconPath = Join-Path $scriptDir "claude.ico"
+
 # Ensure config directory exists
 if (-not (Test-Path $configDir)) {
     New-Item -ItemType Directory -Path $configDir -Force | Out-Null
@@ -68,6 +72,11 @@ $form.FormBorderStyle = "FixedDialog"
 $form.MaximizeBox = $false
 $form.BackColor = [System.Drawing.Color]::FromArgb(30, 30, 30)
 $form.ForeColor = [System.Drawing.Color]::White
+
+# Set form icon if exists
+if (Test-Path $iconPath) {
+    $form.Icon = New-Object System.Drawing.Icon($iconPath)
+}
 
 # Title Label
 $titleLabel = New-Object System.Windows.Forms.Label
