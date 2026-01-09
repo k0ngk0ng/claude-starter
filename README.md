@@ -8,6 +8,8 @@
 - **图形化启动器**: 无需命令行，通过 GUI 配置和启动 Claude Code
 - **配置持久化**: 所有设置自动保存，下次启动自动加载
 - **完整依赖**: 无需预装任何环境，开箱即用
+- **快速安装**: 使用 7z 压缩，安装速度更快
+- **JSON 导入**: 支持从 JSON 文件导入配置
 
 ## 包含组件
 
@@ -21,7 +23,7 @@
 
 ### 方式一：下载预编译安装包
 
-从 [Releases](../../releases) 页面下载最新的 `ClaudeCodeSetup.exe`，双击运行即可。
+从 [Releases](../../releases) 页面下载最新的 `ClaudeCodeSetup-vX.X.X.exe`，双击运行即可。
 
 ### 方式二：自行编译
 
@@ -58,11 +60,16 @@ makensis installer.nsi
 #### API 配置
 | 选项 | 说明 |
 |------|------|
-| `ANTHROPIC_API_KEY` | Anthropic API 密钥 (必填) |
-| `ANTHROPIC_MODEL` | 使用的模型 (如 claude-sonnet-4-20250514) |
+| `ANTHROPIC_AUTH_TOKEN` | Anthropic API 密钥 (必填，如 sk-xxx) |
 | `ANTHROPIC_BASE_URL` | 自定义 API 端点 |
-| `ANTHROPIC_TIMEOUT` | 请求超时时间 (毫秒) |
-| `ANTHROPIC_MAX_TOKENS` | 最大 token 数 |
+| `ANTHROPIC_MODEL` | 默认使用的模型 |
+
+#### 模型默认值
+| 选项 | 说明 |
+|------|------|
+| `ANTHROPIC_DEFAULT_SONNET_MODEL` | Sonnet 模型 (如 claude-sonnet-4-20250514) |
+| `ANTHROPIC_DEFAULT_OPUS_MODEL` | Opus 模型 (如 claude-opus-4-20250514) |
+| `ANTHROPIC_DEFAULT_HAIKU_MODEL` | Haiku 模型 (如 claude-haiku-3-20250514) |
 
 #### 提供商选项
 | 选项 | 说明 |
@@ -82,6 +89,29 @@ makensis installer.nsi
 | `HTTP_PROXY` | HTTP 代理地址 |
 | `HTTPS_PROXY` | HTTPS 代理地址 |
 
+### 导入配置
+
+点击 **Import** 按钮可以从 JSON 文件导入配置，支持以下格式：
+
+```json
+{
+  "ANTHROPIC_AUTH_TOKEN": "sk-xxx",
+  "ANTHROPIC_BASE_URL": "",
+  "ANTHROPIC_MODEL": ""
+}
+```
+
+或带 `env` 包装的格式：
+
+```json
+{
+  "env": {
+    "ANTHROPIC_AUTH_TOKEN": "sk-xxx",
+    "ANTHROPIC_BASE_URL": ""
+  }
+}
+```
+
 ### 配置文件位置
 
 所有设置保存在: `%APPDATA%\ClaudeCode\config.json`
@@ -91,9 +121,8 @@ makensis installer.nsi
 本项目配置了 GitHub Actions 自动构建工作流：
 
 - **触发条件**:
-  - 推送到 `main` 或 `master` 分支且修改了 `windows/` 目录
+  - 推送 `v*` 格式的 tag 时自动构建并发布 Release
   - 手动触发 (workflow_dispatch)
-  - 创建 tag 时自动发布 Release
 
 - **手动触发参数**:
   - `node_version`: 要打包的 Node.js 版本
@@ -102,11 +131,11 @@ makensis installer.nsi
 ### 创建新版本发布
 
 ```bash
-git tag v1.0.0
+git tag -a v1.0.0 -m "v1.0.0 - Release notes"
 git push origin v1.0.0
 ```
 
-这将自动触发构建并创建 Release。
+这将自动触发构建并创建 Release，安装包文件名包含版本号。
 
 ## 项目结构
 
@@ -114,19 +143,22 @@ git push origin v1.0.0
 claude-starter/
 ├── .github/
 │   └── workflows/
-│       └── build.yml          # GitHub Actions 工作流
+│       └── build.yml              # GitHub Actions 工作流
+├── docs/
+│   └── launcher-screenshot.png    # 启动器截图
 ├── windows/
 │   ├── installer/
 │   │   ├── nsis/
-│   │   │   └── installer.nsi  # NSIS 安装脚本
+│   │   │   └── installer.nsi      # NSIS 安装脚本
 │   │   └── resources/
-│   │       ├── ClaudeCodeLauncher.bat
-│   │       ├── LICENSE.txt
+│   │       ├── claude.ico         # 应用图标
+│   │       ├── ClaudeCodeLauncher.vbs  # VBS 启动器 (隐藏窗口)
+│   │       ├── LaunchClaude.bat   # 批处理启动器
 │   │       └── README.txt
 │   ├── launcher/
-│   │   └── ClaudeCodeLauncher.ps1  # PowerShell GUI 启动器
+│   │   └── ClaudeCodeLauncher.ps1 # PowerShell GUI 启动器
 │   └── scripts/
-│       └── download-deps.ps1  # 依赖下载脚本
+│       └── download-deps.ps1      # 依赖下载脚本
 └── README.md
 ```
 
@@ -164,6 +196,10 @@ A: Windows 10 64-bit 及以上版本
 ### Q: 配置保存在哪里？
 
 A: `%APPDATA%\ClaudeCode\config.json`
+
+### Q: 启动时找不到 claude.cmd？
+
+A: 确保安装完成，如果仍有问题，启动器会自动使用 npx 回退方式运行。
 
 ## License
 
