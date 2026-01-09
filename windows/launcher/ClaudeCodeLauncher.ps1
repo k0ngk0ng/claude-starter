@@ -477,7 +477,8 @@ echo Starting Claude Code...
 echo Working Directory: $workDir
 echo.
 
-npx @anthropic-ai/claude-code$claudeArgs
+REM Use bundled claude command directly
+"$installDir\nodejs\claude.cmd"$claudeArgs
 
 pause
 "@

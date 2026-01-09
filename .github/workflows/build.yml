@@ -62,11 +62,17 @@ jobs:
         run: |
           Write-Host "Pre-installing Claude Code..."
           $env:PATH = "$PWD\deps\nodejs;$env:PATH"
+
+          # Set npm prefix to local nodejs folder so everything is self-contained
+          $env:npm_config_prefix = "$PWD\deps\nodejs"
+
           npm install -g @anthropic-ai/claude-code
 
-          # Copy global node_modules to deps for bundling
-          $npmRoot = npm root -g
-          Copy-Item -Path $npmRoot -Destination "deps/nodejs/node_modules" -Recurse -Force
+          # Verify installation
+          Write-Host "Installed packages:"
+          Get-ChildItem "$PWD\deps\nodejs\node_modules" -Directory | Select-Object Name
+          Write-Host "Bin files:"
+          Get-ChildItem "$PWD\deps\nodejs" -Filter "claude*" | Select-Object Name
         shell: pwsh
 
       - name: Compress dependencies for faster installation
