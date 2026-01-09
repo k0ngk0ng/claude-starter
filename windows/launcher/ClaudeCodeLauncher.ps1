@@ -19,16 +19,16 @@ if (-not (Test-Path $configDir)) {
 
 # Default configuration
 $defaultConfig = @{
-    ANTHROPIC_API_KEY = ""
-    ANTHROPIC_MODEL = ""
+    ANTHROPIC_AUTH_TOKEN = ""
     ANTHROPIC_BASE_URL = ""
-    ANTHROPIC_TIMEOUT = ""
-    ANTHROPIC_MAX_TOKENS = ""
+    ANTHROPIC_MODEL = ""
+    ANTHROPIC_DEFAULT_SONNET_MODEL = ""
+    ANTHROPIC_DEFAULT_OPUS_MODEL = ""
+    ANTHROPIC_DEFAULT_HAIKU_MODEL = ""
     CLAUDE_CODE_USE_BEDROCK = $false
     CLAUDE_CODE_USE_VERTEX = $false
     DISABLE_PROMPT_CACHING = $false
     CLAUDE_CODE_SKIP_PERMISSIONS = $false
-    CLAUDE_CODE_MAX_OUTPUT_TOKENS = ""
     HTTP_PROXY = ""
     HTTPS_PROXY = ""
     WorkingDirectory = ""
@@ -169,12 +169,24 @@ $sectionLabel1.Size = New-Object System.Drawing.Size(500, 25)
 $panel.Controls.Add($sectionLabel1)
 $yPos += 30
 
-$txtApiKey = Add-TextBox "ANTHROPIC_API_KEY (Your Anthropic API Key)" "ANTHROPIC_API_KEY" $true
-$txtModel = Add-TextBox "ANTHROPIC_MODEL (e.g., claude-sonnet-4-20250514)" "ANTHROPIC_MODEL"
+$txtAuthToken = Add-TextBox "ANTHROPIC_AUTH_TOKEN (Your API Key, e.g., sk-xxx)" "ANTHROPIC_AUTH_TOKEN" $true
 $txtBaseUrl = Add-TextBox "ANTHROPIC_BASE_URL (Custom API endpoint, optional)" "ANTHROPIC_BASE_URL"
-$txtTimeout = Add-TextBox "ANTHROPIC_TIMEOUT (Request timeout in ms, optional)" "ANTHROPIC_TIMEOUT"
-$txtMaxTokens = Add-TextBox "ANTHROPIC_MAX_TOKENS (Max tokens, optional)" "ANTHROPIC_MAX_TOKENS"
-$txtMaxOutputTokens = Add-TextBox "CLAUDE_CODE_MAX_OUTPUT_TOKENS (Max output tokens, optional)" "CLAUDE_CODE_MAX_OUTPUT_TOKENS"
+$txtModel = Add-TextBox "ANTHROPIC_MODEL (Default model to use)" "ANTHROPIC_MODEL"
+
+# Section: Model Defaults
+$yPos += 10
+$sectionModelDefaults = New-Object System.Windows.Forms.Label
+$sectionModelDefaults.Text = "Model Defaults"
+$sectionModelDefaults.Font = New-Object System.Drawing.Font("Segoe UI", 11, [System.Drawing.FontStyle]::Bold)
+$sectionModelDefaults.ForeColor = [System.Drawing.Color]::FromArgb(100, 200, 255)
+$sectionModelDefaults.Location = New-Object System.Drawing.Point(10, $yPos)
+$sectionModelDefaults.Size = New-Object System.Drawing.Size(500, 25)
+$panel.Controls.Add($sectionModelDefaults)
+$yPos += 30
+
+$txtDefaultSonnet = Add-TextBox "ANTHROPIC_DEFAULT_SONNET_MODEL (e.g., claude-sonnet-4-20250514)" "ANTHROPIC_DEFAULT_SONNET_MODEL"
+$txtDefaultOpus = Add-TextBox "ANTHROPIC_DEFAULT_OPUS_MODEL (e.g., claude-opus-4-20250514)" "ANTHROPIC_DEFAULT_OPUS_MODEL"
+$txtDefaultHaiku = Add-TextBox "ANTHROPIC_DEFAULT_HAIKU_MODEL (e.g., claude-haiku-3-20250514)" "ANTHROPIC_DEFAULT_HAIKU_MODEL"
 
 # Section: Provider Options
 $yPos += 10
@@ -264,19 +276,31 @@ $btnLaunch = New-Object System.Windows.Forms.Button
 $btnLaunch.Text = "Launch Claude Code"
 $btnLaunch.Font = New-Object System.Drawing.Font("Segoe UI", 12, [System.Drawing.FontStyle]::Bold)
 $btnLaunch.Location = New-Object System.Drawing.Point(0, 10)
-$btnLaunch.Size = New-Object System.Drawing.Size(250, 45)
+$btnLaunch.Size = New-Object System.Drawing.Size(200, 45)
 $btnLaunch.BackColor = [System.Drawing.Color]::FromArgb(255, 149, 0)
 $btnLaunch.ForeColor = [System.Drawing.Color]::Black
 $btnLaunch.FlatStyle = "Flat"
 $btnLaunch.Cursor = "Hand"
 $buttonPanel.Controls.Add($btnLaunch)
 
+# Import button
+$btnImport = New-Object System.Windows.Forms.Button
+$btnImport.Text = "Import JSON"
+$btnImport.Font = New-Object System.Drawing.Font("Segoe UI", 10)
+$btnImport.Location = New-Object System.Drawing.Point(210, 10)
+$btnImport.Size = New-Object System.Drawing.Size(100, 45)
+$btnImport.BackColor = [System.Drawing.Color]::FromArgb(60, 60, 60)
+$btnImport.ForeColor = [System.Drawing.Color]::White
+$btnImport.FlatStyle = "Flat"
+$btnImport.Cursor = "Hand"
+$buttonPanel.Controls.Add($btnImport)
+
 # Save button
 $btnSave = New-Object System.Windows.Forms.Button
-$btnSave.Text = "Save Settings"
+$btnSave.Text = "Save"
 $btnSave.Font = New-Object System.Drawing.Font("Segoe UI", 10)
-$btnSave.Location = New-Object System.Drawing.Point(270, 10)
-$btnSave.Size = New-Object System.Drawing.Size(130, 45)
+$btnSave.Location = New-Object System.Drawing.Point(320, 10)
+$btnSave.Size = New-Object System.Drawing.Size(100, 45)
 $btnSave.BackColor = [System.Drawing.Color]::FromArgb(60, 60, 60)
 $btnSave.ForeColor = [System.Drawing.Color]::White
 $btnSave.FlatStyle = "Flat"
@@ -287,8 +311,8 @@ $buttonPanel.Controls.Add($btnSave)
 $btnReset = New-Object System.Windows.Forms.Button
 $btnReset.Text = "Reset"
 $btnReset.Font = New-Object System.Drawing.Font("Segoe UI", 10)
-$btnReset.Location = New-Object System.Drawing.Point(415, 10)
-$btnReset.Size = New-Object System.Drawing.Size(130, 45)
+$btnReset.Location = New-Object System.Drawing.Point(430, 10)
+$btnReset.Size = New-Object System.Drawing.Size(100, 45)
 $btnReset.BackColor = [System.Drawing.Color]::FromArgb(80, 40, 40)
 $btnReset.ForeColor = [System.Drawing.Color]::White
 $btnReset.FlatStyle = "Flat"
@@ -307,6 +331,47 @@ function Get-FormValues {
     }
     return $values
 }
+
+# Import button click - supports JSON files with "env" object
+$btnImport.Add_Click({
+    $openFileDialog = New-Object System.Windows.Forms.OpenFileDialog
+    $openFileDialog.Filter = "JSON files (*.json)|*.json|All files (*.*)|*.*"
+    $openFileDialog.Title = "Import Configuration"
+
+    if ($openFileDialog.ShowDialog() -eq "OK") {
+        try {
+            $jsonContent = Get-Content $openFileDialog.FileName -Raw | ConvertFrom-Json
+
+            # Check if the JSON has an "env" property
+            $envData = $null
+            if ($jsonContent.PSObject.Properties.Name -contains "env") {
+                $envData = $jsonContent.env
+            } else {
+                # Assume direct format
+                $envData = $jsonContent
+            }
+
+            # Map imported values to form controls
+            foreach ($control in $panel.Controls) {
+                if ($control -is [System.Windows.Forms.TextBox]) {
+                    $key = $control.Name
+                    if ($envData.PSObject.Properties.Name -contains $key) {
+                        $control.Text = $envData.$key
+                    }
+                } elseif ($control -is [System.Windows.Forms.CheckBox]) {
+                    $key = $control.Name
+                    if ($envData.PSObject.Properties.Name -contains $key) {
+                        $control.Checked = [bool]$envData.$key
+                    }
+                }
+            }
+
+            [System.Windows.Forms.MessageBox]::Show("Configuration imported successfully!", "Claude Code Launcher", "OK", "Information")
+        } catch {
+            [System.Windows.Forms.MessageBox]::Show("Failed to import configuration: $_", "Error", "OK", "Error")
+        }
+    }
+})
 
 # Save button click
 $btnSave.Add_Click({
@@ -344,23 +409,23 @@ $btnLaunch.Add_Click({
     # Build environment variables
     $envVars = @()
 
-    if ($values.ANTHROPIC_API_KEY) {
-        $envVars += "set ANTHROPIC_API_KEY=$($values.ANTHROPIC_API_KEY)"
-    }
-    if ($values.ANTHROPIC_MODEL) {
-        $envVars += "set ANTHROPIC_MODEL=$($values.ANTHROPIC_MODEL)"
+    if ($values.ANTHROPIC_AUTH_TOKEN) {
+        $envVars += "set ANTHROPIC_AUTH_TOKEN=$($values.ANTHROPIC_AUTH_TOKEN)"
     }
     if ($values.ANTHROPIC_BASE_URL) {
         $envVars += "set ANTHROPIC_BASE_URL=$($values.ANTHROPIC_BASE_URL)"
     }
-    if ($values.ANTHROPIC_TIMEOUT) {
-        $envVars += "set ANTHROPIC_TIMEOUT=$($values.ANTHROPIC_TIMEOUT)"
+    if ($values.ANTHROPIC_MODEL) {
+        $envVars += "set ANTHROPIC_MODEL=$($values.ANTHROPIC_MODEL)"
     }
-    if ($values.ANTHROPIC_MAX_TOKENS) {
-        $envVars += "set ANTHROPIC_MAX_TOKENS=$($values.ANTHROPIC_MAX_TOKENS)"
+    if ($values.ANTHROPIC_DEFAULT_SONNET_MODEL) {
+        $envVars += "set ANTHROPIC_DEFAULT_SONNET_MODEL=$($values.ANTHROPIC_DEFAULT_SONNET_MODEL)"
     }
-    if ($values.CLAUDE_CODE_MAX_OUTPUT_TOKENS) {
-        $envVars += "set CLAUDE_CODE_MAX_OUTPUT_TOKENS=$($values.CLAUDE_CODE_MAX_OUTPUT_TOKENS)"
+    if ($values.ANTHROPIC_DEFAULT_OPUS_MODEL) {
+        $envVars += "set ANTHROPIC_DEFAULT_OPUS_MODEL=$($values.ANTHROPIC_DEFAULT_OPUS_MODEL)"
+    }
+    if ($values.ANTHROPIC_DEFAULT_HAIKU_MODEL) {
+        $envVars += "set ANTHROPIC_DEFAULT_HAIKU_MODEL=$($values.ANTHROPIC_DEFAULT_HAIKU_MODEL)"
     }
     if ($values.CLAUDE_CODE_USE_BEDROCK) {
         $envVars += "set CLAUDE_CODE_USE_BEDROCK=1"
