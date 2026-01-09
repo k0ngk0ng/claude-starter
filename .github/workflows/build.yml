@@ -197,24 +197,45 @@ jobs:
           "@ | Out-File -FilePath "windows/installer/resources/ClaudeCodeLauncher.bat" -Encoding ASCII
         shell: pwsh
 
+      - name: Get version from tag
+        id: version
+        run: |
+          if ($env:GITHUB_REF -match 'refs/tags/(.+)') {
+            $version = $matches[1]
+          } else {
+            $version = "dev"
+          }
+          Write-Host "Version: $version"
+          echo "VERSION=$version" >> $env:GITHUB_OUTPUT
+        shell: pwsh
+
       - name: Build NSIS installer
         run: |
+          $version = "${{ steps.version.outputs.VERSION }}"
           cd windows/installer/nsis
-          & "C:\Program Files (x86)\NSIS\makensis.exe" /V4 installer.nsi
+
+          # Pass version to NSIS
+          & "C:\Program Files (x86)\NSIS\makensis.exe" /V4 /DPRODUCT_VERSION="$version" installer.nsi
+
+          # Rename output file to include version
+          if (Test-Path "..\..\..\dist\ClaudeCodeSetup.exe") {
+            Rename-Item "..\..\..\dist\ClaudeCodeSetup.exe" "ClaudeCodeSetup-$version.exe"
+            Move-Item "ClaudeCodeSetup-$version.exe" "..\..\..\dist\"
+          }
         shell: pwsh
 
       - name: Upload installer artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ClaudeCodeSetup
-          path: dist/ClaudeCodeSetup.exe
+          name: ClaudeCodeSetup-${{ steps.version.outputs.VERSION }}
+          path: dist/ClaudeCodeSetup-*.exe
           retention-days: 30
 
       - name: Create Release (on tag)
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v1
         with:
-          files: dist/ClaudeCodeSetup.exe
+          files: dist/ClaudeCodeSetup-*.exe
           draft: false
           prerelease: false
         env:

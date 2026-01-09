@@ -16,17 +16,25 @@ InstallDirRegKey HKLM "Software\ClaudeCode" "InstallDir"
 RequestExecutionLevel admin
 Unicode True
 
-; Version Information
+; Version Information - can be overridden by /DPRODUCT_VERSION=x.x.x
 !define PRODUCT_NAME "Claude Code"
-!define PRODUCT_VERSION "1.0.0"
+!ifndef PRODUCT_VERSION
+    !define PRODUCT_VERSION "1.0.0"
+!endif
 !define PRODUCT_PUBLISHER "Anthropic"
 !define PRODUCT_WEB_SITE "https://claude.ai"
 
-VIProductVersion "1.0.0.0"
+; Extract version numbers for VIProductVersion (needs x.x.x.x format)
+!searchparse ${PRODUCT_VERSION} "v" VERSION_CLEAN
+!ifndef VERSION_CLEAN
+    !define VERSION_CLEAN ${PRODUCT_VERSION}
+!endif
+
+VIProductVersion "${VERSION_CLEAN}.0.0.0"
 VIAddVersionKey "ProductName" "${PRODUCT_NAME}"
 VIAddVersionKey "ProductVersion" "${PRODUCT_VERSION}"
 VIAddVersionKey "CompanyName" "${PRODUCT_PUBLISHER}"
-VIAddVersionKey "FileDescription" "Claude Code Installer"
+VIAddVersionKey "FileDescription" "Claude Code Installer ${PRODUCT_VERSION}"
 VIAddVersionKey "FileVersion" "${PRODUCT_VERSION}"
 VIAddVersionKey "LegalCopyright" "Copyright (c) ${PRODUCT_PUBLISHER}"
 
