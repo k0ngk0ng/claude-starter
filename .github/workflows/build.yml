@@ -1,0 +1,229 @@
+name: Build Windows Installer
+
+on:
+  push:
+    branches: [main, master]
+    paths:
+      - 'windows/**'
+  pull_request:
+    branches: [main, master]
+    paths:
+      - 'windows/**'
+  workflow_dispatch:
+    inputs:
+      node_version:
+        description: 'Node.js version to bundle'
+        required: false
+        default: '20.18.1'
+      git_version:
+        description: 'Git for Windows version to bundle'
+        required: false
+        default: '2.47.1'
+
+env:
+  NODE_VERSION: ${{ github.event.inputs.node_version || '20.18.1' }}
+  GIT_VERSION: ${{ github.event.inputs.git_version || '2.47.1' }}
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Create directories
+        run: |
+          New-Item -ItemType Directory -Force -Path "deps/nodejs"
+          New-Item -ItemType Directory -Force -Path "deps/git"
+          New-Item -ItemType Directory -Force -Path "dist"
+        shell: pwsh
+
+      - name: Download Node.js
+        run: |
+          Write-Host "Downloading Node.js v$env:NODE_VERSION..."
+          $nodeUrl = "https://nodejs.org/dist/v$env:NODE_VERSION/node-v$env:NODE_VERSION-win-x64.zip"
+          Invoke-WebRequest -Uri $nodeUrl -OutFile "node.zip" -UseBasicParsing
+          Expand-Archive -Path "node.zip" -DestinationPath "temp" -Force
+          Move-Item -Path "temp/node-v$env:NODE_VERSION-win-x64/*" -Destination "deps/nodejs/" -Force
+          Remove-Item -Path "temp" -Recurse -Force
+          Remove-Item -Path "node.zip" -Force
+        shell: pwsh
+
+      - name: Download Git for Windows
+        run: |
+          Write-Host "Downloading Git for Windows v$env:GIT_VERSION..."
+          $gitUrl = "https://github.com/git-for-windows/git/releases/download/v$env:GIT_VERSION.windows.1/PortableGit-$env:GIT_VERSION-64-bit.7z.exe"
+          Invoke-WebRequest -Uri $gitUrl -OutFile "PortableGit.7z.exe" -UseBasicParsing
+          Write-Host "Extracting Git..."
+          Start-Process -FilePath ".\PortableGit.7z.exe" -ArgumentList "-o`"deps/git`" -y" -Wait -NoNewWindow
+          Remove-Item -Path "PortableGit.7z.exe" -Force
+        shell: pwsh
+
+      - name: Pre-install Claude Code
+        run: |
+          Write-Host "Pre-installing Claude Code..."
+          $env:PATH = "$PWD\deps\nodejs;$env:PATH"
+          npm install -g @anthropic-ai/claude-code
+
+          # Copy global node_modules to deps for bundling
+          $npmRoot = npm root -g
+          Copy-Item -Path $npmRoot -Destination "deps/nodejs/node_modules" -Recurse -Force
+        shell: pwsh
+
+      - name: Install NSIS
+        run: |
+          choco install nsis -y
+        shell: pwsh
+
+      - name: Install NSIS plugins
+        run: |
+          # Download EnVar plugin for PATH manipulation
+          Invoke-WebRequest -Uri "https://nsis.sourceforge.io/mediawiki/images/7/7f/EnVar_plugin.zip" -OutFile "EnVar.zip" -UseBasicParsing
+          Expand-Archive -Path "EnVar.zip" -DestinationPath "EnVar" -Force
+
+          # Get NSIS install path
+          $nsisPath = "C:\Program Files (x86)\NSIS"
+
+          # Copy plugin files
+          Copy-Item -Path "EnVar\Plugins\x86-ansi\*.dll" -Destination "$nsisPath\Plugins\x86-ansi\" -Force
+          Copy-Item -Path "EnVar\Plugins\x86-unicode\*.dll" -Destination "$nsisPath\Plugins\x86-unicode\" -Force
+
+          Remove-Item -Path "EnVar.zip" -Force
+          Remove-Item -Path "EnVar" -Recurse -Force
+        shell: pwsh
+
+      - name: Create resource files
+        run: |
+          # Create LICENSE.txt
+          @"
+          Claude Code Windows Installer
+          ==============================
+
+          This installer bundles:
+          - Claude Code CLI by Anthropic
+          - Node.js (https://nodejs.org)
+          - Git for Windows (https://gitforwindows.org)
+
+          By installing this software, you agree to:
+
+          1. Anthropic's Terms of Service (https://www.anthropic.com/terms)
+          2. Node.js License (https://github.com/nodejs/node/blob/main/LICENSE)
+          3. Git License (https://github.com/git/git/blob/master/COPYING)
+
+          This installer is provided "as is" without warranty of any kind.
+          "@ | Out-File -FilePath "windows/installer/resources/LICENSE.txt" -Encoding UTF8
+
+          # Create README.txt
+          @"
+          Claude Code for Windows
+          =======================
+
+          Thank you for installing Claude Code!
+
+          Getting Started:
+          1. Launch "Claude Code" from your Desktop or Start Menu
+          2. Configure your ANTHROPIC_API_KEY in the launcher
+          3. Click "Launch Claude Code" to start
+
+          Configuration:
+          - All settings are saved in: %APPDATA%\ClaudeCode\config.json
+
+          Bundled Components:
+          - Node.js v$env:NODE_VERSION
+          - Git v$env:GIT_VERSION
+          - Claude Code CLI (latest)
+
+          For more information, visit: https://claude.ai
+
+          Support: https://github.com/anthropics/claude-code
+          "@ | Out-File -FilePath "windows/installer/resources/README.txt" -Encoding UTF8
+        shell: pwsh
+
+      - name: Create placeholder icons (will be replaced with actual icons)
+        run: |
+          # Create a simple ICO file placeholder
+          # In production, you should use actual icon files
+
+          # Download a placeholder icon or create one
+          # For now, we'll create an empty placeholder
+          # You should replace this with actual claude.ico
+
+          # Create header.bmp (150x57 pixels for NSIS header)
+          Add-Type -AssemblyName System.Drawing
+          $headerBmp = New-Object System.Drawing.Bitmap(150, 57)
+          $graphics = [System.Drawing.Graphics]::FromImage($headerBmp)
+          $graphics.Clear([System.Drawing.Color]::FromArgb(45, 45, 45))
+          $font = New-Object System.Drawing.Font("Segoe UI", 12, [System.Drawing.FontStyle]::Bold)
+          $brush = New-Object System.Drawing.SolidBrush([System.Drawing.Color]::FromArgb(255, 149, 0))
+          $graphics.DrawString("Claude Code", $font, $brush, 10, 18)
+          $headerBmp.Save("windows/installer/resources/header.bmp", [System.Drawing.Imaging.ImageFormat]::Bmp)
+          $graphics.Dispose()
+          $headerBmp.Dispose()
+
+          # Create welcome.bmp (164x314 pixels for NSIS welcome page)
+          $welcomeBmp = New-Object System.Drawing.Bitmap(164, 314)
+          $graphics = [System.Drawing.Graphics]::FromImage($welcomeBmp)
+          $graphics.Clear([System.Drawing.Color]::FromArgb(30, 30, 30))
+          $font = New-Object System.Drawing.Font("Segoe UI", 14, [System.Drawing.FontStyle]::Bold)
+          $brush = New-Object System.Drawing.SolidBrush([System.Drawing.Color]::FromArgb(255, 149, 0))
+
+          # Draw rotated text
+          $graphics.TranslateTransform(82, 157)
+          $graphics.RotateTransform(-90)
+          $graphics.DrawString("Claude Code", $font, $brush, -50, -10)
+
+          $welcomeBmp.Save("windows/installer/resources/welcome.bmp", [System.Drawing.Imaging.ImageFormat]::Bmp)
+          $graphics.Dispose()
+          $welcomeBmp.Dispose()
+
+          # Create a simple ICO file
+          $iconBmp = New-Object System.Drawing.Bitmap(256, 256)
+          $graphics = [System.Drawing.Graphics]::FromImage($iconBmp)
+          $graphics.SmoothingMode = [System.Drawing.Drawing2D.SmoothingMode]::AntiAlias
+          $graphics.Clear([System.Drawing.Color]::Transparent)
+
+          # Draw orange circle background
+          $brush = New-Object System.Drawing.SolidBrush([System.Drawing.Color]::FromArgb(255, 149, 0))
+          $graphics.FillEllipse($brush, 10, 10, 236, 236)
+
+          # Draw "C" letter
+          $font = New-Object System.Drawing.Font("Segoe UI", 140, [System.Drawing.FontStyle]::Bold)
+          $whiteBrush = New-Object System.Drawing.SolidBrush([System.Drawing.Color]::White)
+          $graphics.DrawString("C", $font, $whiteBrush, 35, 20)
+
+          $iconBmp.Save("windows/installer/resources/claude.ico", [System.Drawing.Imaging.ImageFormat]::Icon)
+          $graphics.Dispose()
+          $iconBmp.Dispose()
+        shell: pwsh
+
+      - name: Create launcher batch file
+        run: |
+          @"
+          @echo off
+          powershell -ExecutionPolicy Bypass -File "%~dp0launcher\ClaudeCodeLauncher.ps1"
+          "@ | Out-File -FilePath "windows/installer/resources/ClaudeCodeLauncher.bat" -Encoding ASCII
+        shell: pwsh
+
+      - name: Build NSIS installer
+        run: |
+          cd windows/installer/nsis
+          & "C:\Program Files (x86)\NSIS\makensis.exe" /V4 installer.nsi
+        shell: pwsh
+
+      - name: Upload installer artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ClaudeCodeSetup
+          path: dist/ClaudeCodeSetup.exe
+          retention-days: 30
+
+      - name: Create Release (on tag)
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v1
+        with:
+          files: dist/ClaudeCodeSetup.exe
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

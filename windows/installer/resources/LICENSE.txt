@@ -1,0 +1,15 @@
+Claude Code Windows Installer
+==============================
+
+This installer bundles:
+- Claude Code CLI by Anthropic
+- Node.js (https://nodejs.org)
+- Git for Windows (https://gitforwindows.org)
+
+By installing this software, you agree to:
+
+1. Anthropic's Terms of Service (https://www.anthropic.com/terms)
+2. Node.js License (https://github.com/nodejs/node/blob/main/LICENSE)
+3. Git License (https://github.com/git/git/blob/master/COPYING)
+
+This installer is provided "as is" without warranty of any kind.
