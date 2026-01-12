@@ -241,23 +241,14 @@ jobs:
           Copy-Item "windows/installer/resources/LaunchClaude.bat" "dist/launcher-update/"
 
           # Create README for launcher update
-          @"
-Claude Code Launcher Update $version
-=====================================
-
-To update the launcher, copy these files to your Claude Code installation:
-
-1. Copy ClaudeCodeLauncher.ps1 to: %PROGRAMFILES%\ClaudeCode\launcher\
-2. Copy claude.ico to: %PROGRAMFILES%\ClaudeCode\launcher\
-3. Copy ClaudeCodeLauncher.vbs to: %PROGRAMFILES%\ClaudeCode\
-4. Copy LaunchClaude.bat to: %PROGRAMFILES%\ClaudeCode\
-
-Or run this PowerShell command as Administrator:
-  Copy-Item *.ps1 "`$env:ProgramFiles\ClaudeCode\launcher\" -Force
-  Copy-Item claude.ico "`$env:ProgramFiles\ClaudeCode\launcher\" -Force
-  Copy-Item *.vbs "`$env:ProgramFiles\ClaudeCode\" -Force
-  Copy-Item *.bat "`$env:ProgramFiles\ClaudeCode\" -Force
-"@ | Out-File -FilePath "dist/launcher-update/README.txt" -Encoding UTF8
+          $readme = "Claude Code Launcher Update $version`n"
+          $readme += "=====================================`n`n"
+          $readme += "To update the launcher, copy these files to your Claude Code installation:`n`n"
+          $readme += "1. Copy ClaudeCodeLauncher.ps1 to: %PROGRAMFILES%\ClaudeCode\launcher\`n"
+          $readme += "2. Copy claude.ico to: %PROGRAMFILES%\ClaudeCode\launcher\`n"
+          $readme += "3. Copy ClaudeCodeLauncher.vbs to: %PROGRAMFILES%\ClaudeCode\`n"
+          $readme += "4. Copy LaunchClaude.bat to: %PROGRAMFILES%\ClaudeCode\`n"
+          $readme | Out-File -FilePath "dist/launcher-update/README.txt" -Encoding UTF8
 
           # Create zip
           Compress-Archive -Path "dist/launcher-update/*" -DestinationPath "dist/ClaudeCodeLauncher-$version.zip"
