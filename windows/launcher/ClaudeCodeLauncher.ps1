@@ -19,6 +19,8 @@ if (-not (Test-Path $configDir)) {
 
 # Default configuration
 $defaultConfig = @{
+    WorkingDirectory = ""
+    CLAUDE_CODE_CONTINUE = $false
     ANTHROPIC_AUTH_TOKEN = ""
     ANTHROPIC_BASE_URL = ""
     ANTHROPIC_MODEL = ""
@@ -31,7 +33,6 @@ $defaultConfig = @{
     CLAUDE_CODE_SKIP_PERMISSIONS = $false
     HTTP_PROXY = ""
     HTTPS_PROXY = ""
-    WorkingDirectory = ""
 }
 
 # Load existing configuration
@@ -159,7 +160,53 @@ function Add-CheckBox($labelText, $configKey) {
     return $checkBox
 }
 
+# Section: Working Directory
+$sectionWorkDir = New-Object System.Windows.Forms.Label
+$sectionWorkDir.Text = "Working Directory"
+$sectionWorkDir.Font = New-Object System.Drawing.Font("Segoe UI", 11, [System.Drawing.FontStyle]::Bold)
+$sectionWorkDir.ForeColor = [System.Drawing.Color]::FromArgb(100, 200, 255)
+$sectionWorkDir.Location = New-Object System.Drawing.Point(10, $yPos)
+$sectionWorkDir.Size = New-Object System.Drawing.Size(500, 25)
+$panel.Controls.Add($sectionWorkDir)
+$yPos += 30
+
+$txtWorkDir = Add-TextBox "Working Directory (Leave empty for user profile)" "WorkingDirectory"
+
+# Browse button for working directory
+$btnBrowse = New-Object System.Windows.Forms.Button
+$btnBrowse.Text = "Browse..."
+$btnBrowse.Font = $labelFont
+$btnBrowse.Location = New-Object System.Drawing.Point(420, ($yPos - 30))
+$btnBrowse.Size = New-Object System.Drawing.Size(90, 25)
+$btnBrowse.BackColor = [System.Drawing.Color]::FromArgb(60, 60, 60)
+$btnBrowse.ForeColor = [System.Drawing.Color]::White
+$btnBrowse.FlatStyle = "Flat"
+$txtWorkDir.Size = New-Object System.Drawing.Size(400, 25)
+$panel.Controls.Add($btnBrowse)
+
+$btnBrowse.Add_Click({
+    $folderBrowser = New-Object System.Windows.Forms.FolderBrowserDialog
+    $folderBrowser.Description = "Select Working Directory"
+    if ($folderBrowser.ShowDialog() -eq "OK") {
+        $txtWorkDir.Text = $folderBrowser.SelectedPath
+    }
+})
+
+# Section: Launch Options
+$yPos += 10
+$sectionLaunchOpts = New-Object System.Windows.Forms.Label
+$sectionLaunchOpts.Text = "Launch Options"
+$sectionLaunchOpts.Font = New-Object System.Drawing.Font("Segoe UI", 11, [System.Drawing.FontStyle]::Bold)
+$sectionLaunchOpts.ForeColor = [System.Drawing.Color]::FromArgb(100, 200, 255)
+$sectionLaunchOpts.Location = New-Object System.Drawing.Point(10, $yPos)
+$sectionLaunchOpts.Size = New-Object System.Drawing.Size(500, 25)
+$panel.Controls.Add($sectionLaunchOpts)
+$yPos += 30
+
+$chkContinue = Add-CheckBox "--continue (Continue previous conversation)" "CLAUDE_CODE_CONTINUE"
+
 # Section: API Configuration
+$yPos += 10
 $sectionLabel1 = New-Object System.Windows.Forms.Label
 $sectionLabel1.Text = "API Configuration"
 $sectionLabel1.Font = New-Object System.Drawing.Font("Segoe UI", 11, [System.Drawing.FontStyle]::Bold)
@@ -230,39 +277,6 @@ $yPos += 30
 
 $txtHttpProxy = Add-TextBox "HTTP_PROXY (e.g., http://proxy:8080)" "HTTP_PROXY"
 $txtHttpsProxy = Add-TextBox "HTTPS_PROXY (e.g., http://proxy:8080)" "HTTPS_PROXY"
-
-# Section: Working Directory
-$yPos += 10
-$sectionLabel5 = New-Object System.Windows.Forms.Label
-$sectionLabel5.Text = "Working Directory"
-$sectionLabel5.Font = New-Object System.Drawing.Font("Segoe UI", 11, [System.Drawing.FontStyle]::Bold)
-$sectionLabel5.ForeColor = [System.Drawing.Color]::FromArgb(100, 200, 255)
-$sectionLabel5.Location = New-Object System.Drawing.Point(10, $yPos)
-$sectionLabel5.Size = New-Object System.Drawing.Size(500, 25)
-$panel.Controls.Add($sectionLabel5)
-$yPos += 30
-
-$txtWorkDir = Add-TextBox "Working Directory (Leave empty for current directory)" "WorkingDirectory"
-
-# Browse button for working directory
-$btnBrowse = New-Object System.Windows.Forms.Button
-$btnBrowse.Text = "Browse..."
-$btnBrowse.Font = $labelFont
-$btnBrowse.Location = New-Object System.Drawing.Point(420, ($yPos - 30))
-$btnBrowse.Size = New-Object System.Drawing.Size(90, 25)
-$btnBrowse.BackColor = [System.Drawing.Color]::FromArgb(60, 60, 60)
-$btnBrowse.ForeColor = [System.Drawing.Color]::White
-$btnBrowse.FlatStyle = "Flat"
-$txtWorkDir.Size = New-Object System.Drawing.Size(400, 25)
-$panel.Controls.Add($btnBrowse)
-
-$btnBrowse.Add_Click({
-    $folderBrowser = New-Object System.Windows.Forms.FolderBrowserDialog
-    $folderBrowser.Description = "Select Working Directory"
-    if ($folderBrowser.ShowDialog() -eq "OK") {
-        $txtWorkDir.Text = $folderBrowser.SelectedPath
-    }
-})
 
 # Buttons panel
 $buttonPanel = New-Object System.Windows.Forms.Panel
@@ -446,8 +460,11 @@ $btnLaunch.Add_Click({
 
     # Build claude command
     $claudeArgs = ""
+    if ($values.CLAUDE_CODE_CONTINUE) {
+        $claudeArgs += " --continue"
+    }
     if ($values.CLAUDE_CODE_SKIP_PERMISSIONS) {
-        $claudeArgs = " --dangerously-skip-permissions"
+        $claudeArgs += " --dangerously-skip-permissions"
     }
 
     # Working directory
