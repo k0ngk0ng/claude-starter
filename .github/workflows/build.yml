@@ -227,6 +227,45 @@ jobs:
           Get-ChildItem "$distPath" | ForEach-Object { Write-Host $_.Name }
         shell: pwsh
 
+      - name: Package launcher update
+        run: |
+          $version = "${{ steps.version.outputs.VERSION }}"
+
+          # Create launcher update package
+          New-Item -ItemType Directory -Force -Path "dist/launcher-update"
+
+          # Copy launcher files
+          Copy-Item "windows/launcher/ClaudeCodeLauncher.ps1" "dist/launcher-update/"
+          Copy-Item "windows/installer/resources/claude.ico" "dist/launcher-update/"
+          Copy-Item "windows/installer/resources/ClaudeCodeLauncher.vbs" "dist/launcher-update/"
+          Copy-Item "windows/installer/resources/LaunchClaude.bat" "dist/launcher-update/"
+
+          # Create README for launcher update
+          @"
+Claude Code Launcher Update $version
+=====================================
+
+To update the launcher, copy these files to your Claude Code installation:
+
+1. Copy ClaudeCodeLauncher.ps1 to: %PROGRAMFILES%\ClaudeCode\launcher\
+2. Copy claude.ico to: %PROGRAMFILES%\ClaudeCode\launcher\
+3. Copy ClaudeCodeLauncher.vbs to: %PROGRAMFILES%\ClaudeCode\
+4. Copy LaunchClaude.bat to: %PROGRAMFILES%\ClaudeCode\
+
+Or run this PowerShell command as Administrator:
+  Copy-Item *.ps1 "`$env:ProgramFiles\ClaudeCode\launcher\" -Force
+  Copy-Item claude.ico "`$env:ProgramFiles\ClaudeCode\launcher\" -Force
+  Copy-Item *.vbs "`$env:ProgramFiles\ClaudeCode\" -Force
+  Copy-Item *.bat "`$env:ProgramFiles\ClaudeCode\" -Force
+"@ | Out-File -FilePath "dist/launcher-update/README.txt" -Encoding UTF8
+
+          # Create zip
+          Compress-Archive -Path "dist/launcher-update/*" -DestinationPath "dist/ClaudeCodeLauncher-$version.zip"
+
+          Write-Host "Created launcher update package:"
+          Get-ChildItem "dist/*.zip" | ForEach-Object { Write-Host "$($_.Name): $([math]::Round($_.Length/1KB, 2)) KB" }
+        shell: pwsh
+
       - name: Upload installer artifact
         uses: actions/upload-artifact@v4
         with:
@@ -234,11 +273,20 @@ jobs:
           path: dist/ClaudeCodeSetup-*.exe
           retention-days: 30
 
+      - name: Upload launcher update artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ClaudeCodeLauncher-${{ steps.version.outputs.VERSION }}
+          path: dist/ClaudeCodeLauncher-*.zip
+          retention-days: 30
+
       - name: Create Release (on tag)
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v1
         with:
-          files: dist/ClaudeCodeSetup-*.exe
+          files: |
+            dist/ClaudeCodeSetup-*.exe
+            dist/ClaudeCodeLauncher-*.zip
           draft: false
           prerelease: false
         env:
