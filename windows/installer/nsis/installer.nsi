@@ -82,31 +82,37 @@ VIAddVersionKey "LegalCopyright" "Copyright (c) ${PRODUCT_PUBLISHER}"
 ; Installer Sections
 ; =====================
 
-Section "Claude Code Core" SecCore
-    SectionIn RO ; Required section
-
+Section "Node.js + Claude Code CLI" SecNodejs
     SetOutPath "$INSTDIR"
 
-    ; Copy 7za.exe first for extraction
+    ; Copy 7za.exe for extraction
     File "..\resources\7za.exe"
 
-    ; Copy 7z archives
+    ; Copy and extract Node.js
     File "..\..\..\deps\nodejs.7z"
-    File "..\..\..\deps\git.7z"
-
-    ; Extract Node.js using 7z
-    DetailPrint "Extracting Node.js..."
+    DetailPrint "Extracting Node.js + Claude Code..."
+    RMDir /r "$INSTDIR\nodejs"
     nsExec::ExecToLog '"$INSTDIR\7za.exe" x -o"$INSTDIR\nodejs" -y "$INSTDIR\nodejs.7z"'
     Delete "$INSTDIR\nodejs.7z"
+    Delete "$INSTDIR\7za.exe"
+SectionEnd
 
-    ; Extract Git using 7z
+Section "Git for Windows" SecGit
+    SetOutPath "$INSTDIR"
+
+    ; Copy 7za.exe for extraction
+    File "..\resources\7za.exe"
+
+    ; Copy and extract Git
+    File "..\..\..\deps\git.7z"
     DetailPrint "Extracting Git..."
+    RMDir /r "$INSTDIR\git"
     nsExec::ExecToLog '"$INSTDIR\7za.exe" x -o"$INSTDIR\git" -y "$INSTDIR\git.7z"'
     Delete "$INSTDIR\git.7z"
-
-    ; Delete 7za.exe after extraction
     Delete "$INSTDIR\7za.exe"
+SectionEnd
 
+Section "Launcher (GUI)" SecLauncher
     ; Copy launcher files
     SetOutPath "$INSTDIR\launcher"
     File "..\..\launcher\ClaudeCodeLauncher.ps1"
@@ -117,6 +123,11 @@ Section "Claude Code Core" SecCore
     File "..\resources\ClaudeCodeLauncher.vbs"
     File "..\resources\LaunchClaude.bat"
     File "..\resources\README.txt"
+SectionEnd
+
+Section "-Registry" SecRegistry
+    ; This section always runs (hidden with -)
+    SetOutPath "$INSTDIR"
 
     ; Create uninstaller
     WriteUninstaller "$INSTDIR\Uninstall.exe"
@@ -188,7 +199,9 @@ SectionEnd
 ; Section Descriptions
 ; =====================
 !insertmacro MUI_FUNCTION_DESCRIPTION_BEGIN
-    !insertmacro MUI_DESCRIPTION_TEXT ${SecCore} "Core Claude Code files including Node.js, Git, and Claude Code CLI. (Required)"
+    !insertmacro MUI_DESCRIPTION_TEXT ${SecNodejs} "Node.js runtime with Claude Code CLI pre-installed. (~150MB)"
+    !insertmacro MUI_DESCRIPTION_TEXT ${SecGit} "Git for Windows - version control support. (~350MB)"
+    !insertmacro MUI_DESCRIPTION_TEXT ${SecLauncher} "GUI launcher for configuring and starting Claude Code. (Fast update)"
     !insertmacro MUI_DESCRIPTION_TEXT ${SecDesktop} "Create a desktop shortcut for easy access."
     !insertmacro MUI_DESCRIPTION_TEXT ${SecStartMenu} "Create Start Menu shortcuts."
     !insertmacro MUI_DESCRIPTION_TEXT ${SecPath} "Add Node.js and Git to system PATH for command line access."
