@@ -53,7 +53,7 @@ makensis installer.nsi
 
 安装完成后，从桌面或开始菜单启动 **Claude Code**，将看到配置界面：
 
-![Launcher Screenshot](docs/launcher-screenshot.png)
+![Launcher Screenshot](screenshots/launcher-screenshot.png)
 
 ### 可配置选项
 
@@ -154,7 +154,7 @@ claude-starter/
 ├── .github/
 │   └── workflows/
 │       └── build.yml              # GitHub Actions 工作流
-├── docs/
+├── screenshots/
 │   └── launcher-screenshot.png    # 启动器截图
 ├── windows/
 │   ├── installer/
